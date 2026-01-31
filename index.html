@@ -32,70 +32,86 @@
     </div>
     <canvas id="gameCanvas" width="600" height="400"></canvas>
 
-    <script>
+    <script type="module">
+        // 1. 引入必要的 Firebase 函数
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getDatabase, ref, push, set, onValue, query, orderByChild, limitToLast } 
+            from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+        // 2. 粘贴你刚才在 Firebase 控制台获得的配置
+        // TODO: 请务必替换成你自己的配置！！！
+        const firebaseConfig = {
+            apiKey: "AIzaSyB6ll1HLO8PTOBWKF5S2f7I2wqT_WpuoA4",
+            authDomain: "my-game-rank.firebaseapp.com",
+            projectId: "my-game-rank",
+            storageBucket: "my-game-rank.firebasestorage.app",
+            messagingSenderId: "944763930116",
+            appId: "1:944763930116:web:dd4e223cf0c8b85b191751"
+        };
+
+        // 3. 初始化 Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+
+        // ================= 游戏逻辑部分 =================
+        // 为了方便演示，我们把游戏逻辑也放在这个 module 标签里
+        // 或者你可以把变量挂载到 window 对象上供外部调用
+
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
-
-        // 玩家 (Player)
-        let player = { x: canvas.width / 2, y: canvas.height / 2, size: 20, speed: 5, color: 'red' };
         
-        // 敌人 (Enemy) - AI Agent
-        let enemy = { x: 50, y: 50, size: 25, speed: 2.5, color: 'blue' };
-
-        // 监听键盘
-        const keys = {};
-        window.addEventListener('keydown', (e) => keys[e.key] = true);
-        window.addEventListener('keyup', (e) => keys[e.key] = false);
-
-        // 碰撞检测函数
-        function checkCollision(rect1, rect2) {
-            return (rect1.x < rect2.x + rect2.size &&
-                    rect1.x + rect1.size > rect2.x &&
-                    rect1.y < rect2.y + rect2.size &&
-                    rect1.y + rect1.size > rect2.y);
+        // 简单的游戏变量
+        let player = { x: 50, y: 50, size: 20, color: 'red' };
+        
+        // ----- 新增：排行榜功能 -----
+        
+        // 上传分数函数
+        window.uploadScore = function() {
+            const name = prompt("你挂了！请输入你的名字上榜：");
+            if (name) {
+                const score = Math.floor(Math.random() * 100); // 这里先用随机数模拟得分
+                
+                // 写入数据库的核心代码
+                const scoresRef = ref(db, 'leaderboard'); // 指向 'leaderboard' 节点
+                const newScoreRef = push(scoresRef);      // 生成一个新 ID
+                set(newScoreRef, {
+                    username: name,
+                    score: score,
+                    timestamp: Date.now()
+                }).then(() => {
+                    alert(`上传成功！${name}: ${score}分`);
+                }).catch((error) => {
+                    console.error("上传失败:", error);
+                });
+            }
         }
 
+        // 监听排行榜数据（实时更新！）
+        const topScoresRef = query(ref(db, 'leaderboard'), orderByChild('score'), limitToLast(5));
+        onValue(topScoresRef, (snapshot) => {
+            const data = snapshot.val();
+            console.log("收到最新排行榜数据:", data);
+            // 这里你可以写代码把数据渲染到 HTML 页面上
+            // 比如 document.getElementById('rank').innerText = ...
+        });
+
+        // ================= 简单的游戏循环演示 =================
         function update() {
-            // 1. 更新玩家位置
-            if (keys['ArrowUp']) player.y -= player.speed;
-            if (keys['ArrowDown']) player.y += player.speed;
-            if (keys['ArrowLeft']) player.x -= player.speed;
-            if (keys['ArrowRight']) player.x += player.speed;
-
-            // 2. 更新敌人位置 (简单的追踪算法)
-            // 计算敌人指向玩家的向量
-            let dx = player.x - enemy.x;
-            let dy = player.y - enemy.y;
-            let distance = Math.sqrt(dx * dx + dy * dy);
-
-            // 归一化并移动 (如果有距离的话)
-            if (distance > 0) {
-                enemy.x += (dx / distance) * enemy.speed;
-                enemy.y += (dy / distance) * enemy.speed;
-            }
-
-            // 3. 碰撞检测
-            if (checkCollision(player, enemy)) {
-                alert("被抓到了！游戏重置");
-                player.x = canvas.width / 2;
-                player.y = canvas.height / 2;
-                enemy.x = 0;
-                enemy.y = 0;
-            }
-
-            // 4. 绘制画面
-            ctx.clearRect(0, 0, canvas.width, canvas.height); 
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
             
-            // 画玩家
             ctx.fillStyle = player.color;
             ctx.fillRect(player.x, player.y, player.size, player.size);
             
-            // 画敌人
-            ctx.fillStyle = enemy.color;
-            ctx.fillRect(enemy.x, enemy.y, enemy.size, enemy.size);
-
+            // 模拟：点击画布就触发“游戏结束并上传分数”
+            // (实际游戏中你应该在 checkCollision 里面调用)
+            
             requestAnimationFrame(update);
         }
+        
+        // 绑定点击事件用于测试
+        canvas.addEventListener('click', () => {
+            window.uploadScore();
+        });
 
         update();
     </script>
