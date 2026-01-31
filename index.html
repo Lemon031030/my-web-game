@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>我的第一个网页游戏</title>
+    <style>
+        body { 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            height: 100vh; 
+            margin: 0; 
+            background-color: #222; 
+            color: white;
+            font-family: Arial, sans-serif;
+        }
+        canvas { 
+            border: 2px solid white; 
+            background-color: #000; 
+        }
+        #instructions {
+            position: absolute;
+            top: 10px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div id="instructions">
+        <h1>Hello World Game</h1>
+        <p>按键盘 <b>↑ ↓ ← →</b> 控制红色方块移动</p>
+    </div>
+    <canvas id="gameCanvas" width="600" height="400"></canvas>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // 玩家 (Player)
+        let player = { x: canvas.width / 2, y: canvas.height / 2, size: 20, speed: 5, color: 'red' };
+        
+        // 敌人 (Enemy) - AI Agent
+        let enemy = { x: 50, y: 50, size: 25, speed: 2.5, color: 'blue' };
+
+        // 监听键盘
+        const keys = {};
+        window.addEventListener('keydown', (e) => keys[e.key] = true);
+        window.addEventListener('keyup', (e) => keys[e.key] = false);
+
+        // 碰撞检测函数
+        function checkCollision(rect1, rect2) {
+            return (rect1.x < rect2.x + rect2.size &&
+                    rect1.x + rect1.size > rect2.x &&
+                    rect1.y < rect2.y + rect2.size &&
+                    rect1.y + rect1.size > rect2.y);
+        }
+
+        function update() {
+            // 1. 更新玩家位置
+            if (keys['ArrowUp']) player.y -= player.speed;
+            if (keys['ArrowDown']) player.y += player.speed;
+            if (keys['ArrowLeft']) player.x -= player.speed;
+            if (keys['ArrowRight']) player.x += player.speed;
+
+            // 2. 更新敌人位置 (简单的追踪算法)
+            // 计算敌人指向玩家的向量
+            let dx = player.x - enemy.x;
+            let dy = player.y - enemy.y;
+            let distance = Math.sqrt(dx * dx + dy * dy);
+
+            // 归一化并移动 (如果有距离的话)
+            if (distance > 0) {
+                enemy.x += (dx / distance) * enemy.speed;
+                enemy.y += (dy / distance) * enemy.speed;
+            }
+
+            // 3. 碰撞检测
+            if (checkCollision(player, enemy)) {
+                alert("被抓到了！游戏重置");
+                player.x = canvas.width / 2;
+                player.y = canvas.height / 2;
+                enemy.x = 0;
+                enemy.y = 0;
+            }
+
+            // 4. 绘制画面
+            ctx.clearRect(0, 0, canvas.width, canvas.height); 
+            
+            // 画玩家
+            ctx.fillStyle = player.color;
+            ctx.fillRect(player.x, player.y, player.size, player.size);
+            
+            // 画敌人
+            ctx.fillStyle = enemy.color;
+            ctx.fillRect(enemy.x, enemy.y, enemy.size, enemy.size);
+
+            requestAnimationFrame(update);
+        }
+
+        update();
+    </script>
+</body>
+</html>
